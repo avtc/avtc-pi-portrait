@@ -1,0 +1,6 @@
+node_modules/
+dist/
+
+# Parallel worktrees created by avtc-pi-feature-flow extension
+.worktrees/
+.ff

@@ -1,0 +1,70 @@
+{
+  "name": "avtc-pi-portrait",
+  "version": "1.0.1",
+  "description": "Portrait dreaming — extract user behavior patterns from session history",
+  "type": "module",
+  "license": "MIT",
+  "keywords": [
+    "pi-package",
+    "pi-extension"
+  ],
+  "main": "./index.ts",
+  "types": "./index.ts",
+  "pi": {
+    "extensions": [
+      "./index.ts",
+      "node_modules/avtc-pi-ui-components/index.ts"
+    ],
+    "allowedCodeDeps": [
+      "avtc-pi-logger",
+      "avtc-pi-settings-ui"
+    ]
+  },
+  "files": [
+    "index.ts",
+    "src/",
+    "docs/",
+    "assets/images/",
+    "LICENSE",
+    "README.md"
+  ],
+  "scripts": {
+    "lint": "biome check .",
+    "lint:optional-params": "node scripts/no-optional-params.cjs src/ tests/",
+    "lint:bare-literals": "node scripts/no-bare-literals.cjs src/ index.ts",
+    "lint:design-refs": "node scripts/no-design-refs.cjs src/ index.ts README.md",
+    "lint:bundled-imports": "node scripts/no-bundled-extension-imports.cjs src/ index.ts",
+    "knip": "knip --production",
+    "typecheck": "tsc --noEmit --incremental --tsBuildInfoFile node_modules/.cache/tsc.tsbuildinfo",
+    "test:unit": "node scripts/test-low-priority.cjs vitest run",
+    "test": "node scripts/test-low-priority.cjs \"node scripts/run-parallel.cjs \"npm run lint:optional-params :: npm run lint:bare-literals :: npm run lint:design-refs :: npm run lint:bundled-imports :: npm run lint:as-never :: npm run lint :: npm run typecheck :: npm run knip :: npm run dupes\" && vitest run\"",
+    "dupes": "jscpd src/ --exit-code --threshold 0.01",
+    "lint:as-never": "node scripts/no-as-never.cjs src/ tests/ index.ts"
+  },
+  "dependencies": {
+    "avtc-pi-logger": "^1.0.0",
+    "avtc-pi-settings-ui": "^1.0.0",
+    "avtc-pi-ui-components": "^1.0.0"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "^2.5.0",
+    "@earendil-works/pi-agent-core": "^0.80.2",
+    "@earendil-works/pi-ai": "^0.80.2",
+    "@earendil-works/pi-coding-agent": "^0.80.2",
+    "@types/node": "^25.9.3",
+    "jscpd": "^5.0.10",
+    "knip": "^6.17.1",
+    "typebox": "^1.1.38",
+    "typescript": "^6.0.3",
+    "vitest": "^4.1.9"
+  },
+  "author": "avtc <tarasenkov@gmail.com>",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/avtc/avtc-pi-portrait.git"
+  },
+  "bugs": {
+    "url": "https://github.com/avtc/avtc-pi-portrait/issues"
+  },
+  "homepage": "https://github.com/avtc/avtc-pi-portrait"
+}
