@@ -5,7 +5,7 @@ import * as fs from "node:fs";
 import * as os from "node:os";
 import * as path from "node:path";
 import type { ExtensionAPI, ExtensionContext } from "@earendil-works/pi-coding-agent";
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 
 /**
  * Idempotent wiring guard: portrait can be bundled into the avtc-pi umbrella AND installed
@@ -16,16 +16,23 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
  *
  * The mock-pi shape + module mocks (config/settings-ui/sqlite-mutex) mirror cache-refresh.test.ts
  * so the first call wires against a temp dir without throwing.
+ *
+ * PERFORMANCE: the 4 tests only exercise the globalThis wiring guard and the registered handlers
+ * — they do NOT need a freshly-re-evaluated module graph per test. Importing the (mocked) extension
+ * ONCE in beforeAll and sharing it across tests avoids ~4 full graph evaluations
+ * (maintenance-core → builder → llm-call → collector …), cutting this file from ~3.3s to ~1s.
  */
 
 // Mutable holder the config mock reads from. Hoisted so vi.doMock's factory can close over it.
 const holder = vi.hoisted(() => ({ portraitDir: "" }));
 
 describe("extension entry idempotent wiring guard", () => {
+  // Shared, mocked extension module — imported once in beforeAll (see below).
+  let mod: typeof import("../src/index.js");
   let tempHome: string;
 
-  beforeEach(async () => {
-    // Ensure a clean wiring flag for every case (vitest isolate:false shares globalThis).
+  beforeAll(async () => {
+    // Ensure a clean wiring flag before the first import (isolate:false shares globalThis).
     delete (globalThis as { __avtcPiPortraitWired?: boolean }).__avtcPiPortraitWired;
 
     tempHome = fs.mkdtempSync(path.join(os.tmpdir(), "portrait-idem-"));
@@ -35,6 +42,7 @@ describe("extension entry idempotent wiring guard", () => {
     // Pause the pipeline so session_start (if a handler were driven) does not schedule a timer.
     fs.writeFileSync(path.join(holder.portraitDir, "portrait-state.json"), '{"paused":true}');
 
+    // Mock config/settings-ui/sqlite BEFORE importing so the graph is evaluated against the mocks.
     vi.resetModules();
     vi.doMock("../src/config.js", async (importOriginal) => {
       const orig = await importOriginal<typeof import("../src/config.js")>();
@@ -61,20 +69,22 @@ describe("extension entry idempotent wiring guard", () => {
     vi.doMock("../src/snippets/vendored/sqlite-mutex.js", () => ({
       tryAcquireSqliteMutex: async () => null,
     }));
+
+    mod = await import("../src/index.js");
   });
 
-  afterEach(async () => {
-    // Kill initFooter's status interval + any startLockPoll interval.
+  beforeEach(() => {
+    // Ensure a clean wiring flag for every case (vitest isolate:false shares globalThis).
+    delete (globalThis as { __avtcPiPortraitWired?: boolean }).__avtcPiPortraitWired;
+  });
+
+  afterEach(() => {
+    // Kill initFooter's status interval + any startLockPoll interval via the shared module.
     try {
-      const { clearAllTimers } = await import("../src/index.js");
-      clearAllTimers();
+      mod.clearAllTimers();
     } catch {
       // ignore — module graph may already be torn down
     }
-    vi.doUnmock("../src/config.js");
-    vi.doUnmock("../src/settings-ui.js");
-    vi.doUnmock("../src/snippets/vendored/sqlite-mutex.js");
-    vi.resetModules();
     // Clear the wiring flag so it does not leak into other test files (isolate:false).
     delete (globalThis as { __avtcPiPortraitWired?: boolean }).__avtcPiPortraitWired;
     fs.rmSync(tempHome, { recursive: true, force: true });
@@ -102,8 +112,7 @@ describe("extension entry idempotent wiring guard", () => {
     return { pi, handlers };
   }
 
-  it("wires on the first call without throwing", async () => {
-    const mod = await import("../src/index.js");
+  it("wires on the first call without throwing", () => {
     const { pi, handlers } = makeMockPi();
     expect(() => mod.default(pi)).not.toThrow();
     // Wiring registers the expected event handlers — proves the body actually ran.
@@ -111,9 +120,7 @@ describe("extension entry idempotent wiring guard", () => {
     expect(handlers.has("session_shutdown")).toBe(true);
   });
 
-  it("no-ops on the second call without throwing and does not re-register", async () => {
-    const mod = await import("../src/index.js");
-
+  it("no-ops on the second call without throwing and does not re-register", () => {
     // First call wires normally and registers handlers on its own pi.
     const { pi: firstPi, handlers: firstHandlers } = makeMockPi();
     mod.default(firstPi);
@@ -127,8 +134,7 @@ describe("extension entry idempotent wiring guard", () => {
     expect(secondHandlers.size).toBe(0);
   });
 
-  it("sets the globalThis wiring flag on first call", async () => {
-    const mod = await import("../src/index.js");
+  it("sets the globalThis wiring flag on first call", () => {
     const { pi } = makeMockPi();
     expect((globalThis as { __avtcPiPortraitWired?: boolean }).__avtcPiPortraitWired).toBeUndefined();
     mod.default(pi);
@@ -139,7 +145,6 @@ describe("extension entry idempotent wiring guard", () => {
     // pi re-evaluates extension modules fresh on /reload (jiti moduleCache:false) but globalThis
     // persists. An un-reset guard flag short-circuits re-wiring, leaving the extension dead after
     // /reload. A session_shutdown handler must reset the flag so the next entry call re-wires.
-    const mod = await import("../src/index.js");
     const g = globalThis as { __avtcPiPortraitWired?: boolean };
 
     // 1. Call entry once — wires and sets the flag.

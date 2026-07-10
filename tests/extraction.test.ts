@@ -33,14 +33,21 @@ vi.mock("../src/llm-call.js", async (importOriginal) => {
 
 // Mock config to control portrait dir
 const mockPortraitDirs: string[] = [];
-vi.mock("../src/config.js", async (importOriginal) => {
-  const orig = await importOriginal<typeof import("../src/config.js")>();
-  return {
-    ...orig,
-    getPortraitDir: () =>
-      mockPortraitDirs.length > 0 ? mockPortraitDirs[mockPortraitDirs.length - 1] : orig.getPortraitDir(),
-  };
-});
+vi.mock("../src/config.js", () => ({
+  getPortraitDir: () => (mockPortraitDirs.length > 0 ? mockPortraitDirs[mockPortraitDirs.length - 1] : ""),
+  getLockPath: () => "",
+  getCollectLockPath: () => "",
+  getSessionDirs: () => [],
+  getBgScanCheckpointsPath: () => "",
+}));
+
+// Git audit layer is irrelevant to extraction tests (they assert on the debug dump output,
+// not commit messages). Mock it to skip the `git` subprocess initGit spawns per tmpDir.
+vi.mock("../src/git.js", () => ({
+  initGit: vi.fn(),
+  commitPortrait: vi.fn(() => true),
+  checkoutHead: vi.fn(() => false),
+}));
 
 import { scanSessions } from "../src/collector.js";
 // Import after mocks

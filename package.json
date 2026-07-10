@@ -1,7 +1,7 @@
 {
   "name": "avtc-pi-portrait",
-  "version": "1.0.1",
-  "description": "Portrait dreaming — extract user behavior patterns from session history",
+  "version": "1.0.3",
+  "description": "Builds a behavioral portrait from your session history — learns your corrections and injects them into the system prompt so the agent anticipates them before responding.",
   "type": "module",
   "license": "MIT",
   "keywords": [
@@ -66,5 +66,8 @@
   "bugs": {
     "url": "https://github.com/avtc/avtc-pi-portrait/issues"
   },
-  "homepage": "https://github.com/avtc/avtc-pi-portrait"
+  "homepage": "https://github.com/avtc/avtc-pi-portrait",
+  "bundledDependencies": [
+    "avtc-pi-ui-components"
+  ]
 }

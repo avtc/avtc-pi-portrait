@@ -1,6 +1,6 @@
 # avtc-pi-portrait
 
-A pi-coding-agent extension that builds structured persona models from session history to proactively anticipate user corrections and flags.
+Builds a behavioral portrait from your session history — learns your corrections and injects them into the system prompt so the agent anticipates them before responding.
 
 ## Features
 
@@ -23,7 +23,7 @@ A manual collect run with the live status widget showing progress:
 ## Installation
 
 ```bash
-pi install git:github.com/avtc/avtc-pi-portrait
+pi install npm:avtc-pi-portrait
 ```
 
 ## Starter Portrait (optional)

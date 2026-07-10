@@ -2,22 +2,40 @@
 // SPDX-FileCopyrightText: 2026 avtc <tarasenkov@gmail.com>
 
 import "../src/globals.js";
-import { execSync } from "node:child_process";
 import * as fs from "node:fs";
 import * as path from "node:path";
 import type { ExtensionContext } from "@earendil-works/pi-coding-agent";
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { applyDecisions, validateDecisions } from "../src/builder.js";
 import { summarizeToolCall, summarizeToolResult } from "../src/collector.js";
 import { extractAssistantText, extractContent, isApproval } from "../src/filtering.js";
-import { initGit } from "../src/git.js";
+import { initGit, resetGitExec, setGitExec } from "../src/git.js";
 import { parsePortraitRules } from "../src/storage.js";
 import type { BuildingDecision, PortraitState } from "../src/types.js";
+import { installRecordingGit } from "./git-recorder.js";
 import { setupTestSettings, teardownTestSettings } from "./settings-helpers.js";
 
 // Every test reads portrait settings via the mock-DI accessor (schema-derived defaults, no handle).
 beforeEach(() => setupTestSettings(null));
 afterEach(() => teardownTestSettings());
+
+// ---------------------------------------------------------------------------
+// Git audit layer is exercised through an injectable runner seam (setGitExec in src/git.js).
+// A recording runner captures commit messages so the commit-message assertions below read them
+// via recording.getLatestCommit()/getCommitLog() — no `git` subprocess runs anywhere here.
+// ---------------------------------------------------------------------------
+const recording = installRecordingGit();
+
+beforeAll(() => {
+  // Route every git call in src/git.js through the recording runner (no real `git` subprocesses).
+  setGitExec(recording.runner);
+});
+
+afterAll(() => {
+  resetGitExec();
+});
+
+// (git harness removed — git is fully mocked via the recording runner seam above)
 
 // ============================================================================
 // BuildingDecision type tests
@@ -980,7 +998,7 @@ describe("applyDecisions with evictPositions (insert-then-evict by text)", () =>
       // evicted.md exists (created by initGit) but should only contain header — no rules
       expect(readEvicted(dir)).toEqual([]);
       // Commit message should only contain "added"
-      const log = execSync("git log -1 --format=%s", { cwd: dir }).toString().trim();
+      const log = recording.getLatestCommit(dir).toString().trim();
       expect(log).toContain("added");
       expect(log).not.toContain("dropped");
       expect(log).not.toContain("evicted");
@@ -1231,7 +1249,7 @@ describe("applyDecisions with evictPositions (insert-then-evict by text)", () =>
       expect(evictedContent).toContain("R5");
       expect(evictedContent).toContain("R4");
       // Commit message should NOT contain 'dropped' (mechanical only)
-      const log = execSync("git log -1 --format=%s", { cwd: dir }).toString().trim();
+      const log = recording.getLatestCommit(dir).toString().trim();
       expect(log).not.toContain("dropped");
     } finally {
       cleanup(dir);
@@ -1264,7 +1282,7 @@ describe("applyDecisions with evictPositions (insert-then-evict by text)", () =>
       expect(evictedContent).toContain("R5"); // mechanical
       expect(evictedContent).toContain("R4"); // mechanical
       // Commit message should contain both dropped and evicted segments
-      const log = execSync("git log -1 --format=%s", { cwd: dir }).toString().trim();
+      const log = recording.getLatestCommit(dir).toString().trim();
       expect(log).toContain("dropped");
       expect(log).toContain("evicted");
     } finally {
@@ -1285,7 +1303,7 @@ describe("applyDecisions with evictPositions (insert-then-evict by text)", () =>
       ];
       applyDecisions(dir, ["R1", "R2", "R3", "R4"], ["NEW"], decisions, undefined);
       // Check git log for commit message
-      const log = execSync("git log -1 --format=%s", { cwd: dir }).toString().trim();
+      const log = recording.getLatestCommit(dir).toString().trim();
       expect(log).toContain("dropped");
     } finally {
       cleanup(dir);
@@ -1364,7 +1382,7 @@ describe("applyDecisions with evictPositions (insert-then-evict by text)", () =>
       const rules = parsePortraitRules(fs.readFileSync(path.join(dir, "portrait.md"), "utf-8"));
       expect(rules).toEqual(["R1", "R2"]);
       // No new commit should be created — only the init commit exists
-      const log = execSync("git log --oneline", { cwd: dir }).toString().trim();
+      const log = recording.getCommitLog(dir).toString().trim();
       const lines = log.split("\n").filter((l) => l.length > 0);
       expect(lines.length).toBe(1); // only init commit
       // evicted.md exists (created by initGit) but should only contain header — no rules
@@ -1484,7 +1502,7 @@ describe("applyDecisions merge action", () => {
         },
       ];
       applyDecisions(dir, ["R1", "R2"], ["CAND"], decisions, undefined);
-      const log = execSync("git log -1 --format=%s", { cwd: dir }).toString().trim();
+      const log = recording.getLatestCommit(dir).toString().trim();
       expect(log).toContain("merged");
     } finally {
       cleanup(dir);
@@ -1547,10 +1565,10 @@ describe("applyDecisions skipPersist", () => {
   it("skipPersist does not create commit", () => {
     const dir = tmpDir();
     try {
-      const beforeLog = execSync("git log --oneline", { cwd: dir }).toString().trim();
+      const beforeLog = recording.getCommitLog(dir).toString().trim();
       const decisions: BuildingDecision[] = [{ candidate: "C1", action: "insert", beforePosition: 2 }];
       applyDecisions(dir, ["R1", "R2", "R3"], ["NEW"], decisions, { skipPersist: true });
-      const afterLog = execSync("git log --oneline", { cwd: dir }).toString().trim();
+      const afterLog = recording.getCommitLog(dir).toString().trim();
       expect(afterLog).toBe(beforeLog);
     } finally {
       cleanup(dir);
@@ -1599,16 +1617,13 @@ import { vi } from "vitest";
 import { reset } from "../src/commands/reset.js";
 
 const mockPortraitDirs: string[] = [];
-vi.mock("../src/config.js", async (importOriginal) => {
-  const orig = await importOriginal<typeof import("../src/config.js")>();
-  return {
-    ...orig,
-    getPortraitDir: () =>
-      mockPortraitDirs.length > 0 ? mockPortraitDirs[mockPortraitDirs.length - 1] : orig.getPortraitDir(),
-    getLockPath: () => path.join(process.env.TEMP || "/tmp", "portrait-test-instance-lock.json"),
-    getCollectLockPath: () => path.join(process.env.TEMP || "/tmp", "portrait-test-collect-lock.json"),
-  };
-});
+vi.mock("../src/config.js", () => ({
+  getPortraitDir: () => (mockPortraitDirs.length > 0 ? mockPortraitDirs[mockPortraitDirs.length - 1] : ""),
+  getLockPath: () => path.join(process.env.TEMP || "/tmp", "portrait-test-instance-lock.json"),
+  getCollectLockPath: () => path.join(process.env.TEMP || "/tmp", "portrait-test-collect-lock.json"),
+  getSessionDirs: () => [],
+  getBgScanCheckpointsPath: () => "",
+}));
 
 describe("reset", () => {
   const tmpDir = () => {

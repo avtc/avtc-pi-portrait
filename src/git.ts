@@ -7,6 +7,31 @@ import * as path from "node:path";
 import { reportError } from "./error.js";
 import { DROPPED_MD_HEADER, EVICTED_MD_HEADER } from "./storage.js";
 
+// --- testability seam -------------------------------------------------------
+// Every git invocation routes through this module-level slot. Default = real `execSync`.
+// Tests swap it once (e.g. with a recorder/mock that returns canned output or records commit
+// messages) to avoid spawning `git` subprocesses — mirroring avtc-pi-feature-flow's
+// `setGitRunner`. Restore with `resetGitExec()`.
+export type GitExec = (cmd: string, opts?: { cwd?: string; stdio?: unknown }) => string;
+
+const defaultGitExec: GitExec = (cmd, opts) =>
+  execSync(cmd, {
+    ...(opts ?? {}),
+    stdio: (opts?.stdio as "pipe" | "ignore" | "inherit") ?? "pipe",
+  }) as unknown as string;
+
+let gitExec: GitExec = defaultGitExec;
+
+/** Test seam — replace how this module shells out to git. Restore with `resetGitExec()`. */
+export function setGitExec(runner: GitExec): void {
+  gitExec = runner;
+}
+
+/** Restore the real `execSync`-backed git runner. */
+export function resetGitExec(): void {
+  gitExec = defaultGitExec;
+}
+
 /**
  * Whether the `git` binary is available on PATH. Checked once and cached for the process
  * lifetime (git doesn't appear/disappear mid-process).
@@ -37,9 +62,9 @@ export function initGit(portraitDir: string): void {
   const gitPath = path.join(portraitDir, ".git");
   if (!fs.existsSync(gitPath)) {
     try {
-      execSync("git init", { cwd: portraitDir, stdio: "pipe" });
-      execSync('git config user.email "portrait@local"', { cwd: portraitDir, stdio: "pipe" });
-      execSync('git config user.name "Portrait"', { cwd: portraitDir, stdio: "pipe" });
+      gitExec("git init", { cwd: portraitDir, stdio: "pipe" });
+      gitExec('git config user.email "portrait@local"', { cwd: portraitDir, stdio: "pipe" });
+      gitExec('git config user.name "Portrait"', { cwd: portraitDir, stdio: "pipe" });
       // Create .gitignore
       fs.writeFileSync(
         path.join(portraitDir, ".gitignore"),
@@ -49,8 +74,8 @@ export function initGit(portraitDir: string): void {
       // Create evicted.md and dropped.md with headers so git add always succeeds
       fs.writeFileSync(path.join(portraitDir, "evicted.md"), EVICTED_MD_HEADER, "utf-8");
       fs.writeFileSync(path.join(portraitDir, "dropped.md"), DROPPED_MD_HEADER, "utf-8");
-      execSync("git add .gitignore evicted.md dropped.md", { cwd: portraitDir, stdio: "pipe" });
-      execSync('git commit -m "init: portrait git repo"', { cwd: portraitDir, stdio: "pipe" });
+      gitExec("git add .gitignore evicted.md dropped.md", { cwd: portraitDir, stdio: "pipe" });
+      gitExec('git commit -m "init: portrait git repo"', { cwd: portraitDir, stdio: "pipe" });
     } catch (err) {
       reportError(`Failed to initialize git repo: ${err}`, "git error");
     }
@@ -66,23 +91,23 @@ export function commitPortrait(portraitDir: string, message: string): boolean {
     const files = ["portrait.md", "evicted.md", "dropped.md"]
       .filter((f) => fs.existsSync(path.join(portraitDir, f)))
       .join(" ");
-    execSync(`git add ${files}`, { cwd: portraitDir, stdio: "pipe" });
+    gitExec(`git add ${files}`, { cwd: portraitDir, stdio: "pipe" });
     // Skip the commit if nothing is staged (no-op run). `git diff --cached --quiet`
     // exits 0 when there are no staged changes — treat that as success, not an error.
     try {
-      execSync("git diff --cached --quiet", { cwd: portraitDir, stdio: "pipe" });
+      gitExec("git diff --cached --quiet", { cwd: portraitDir, stdio: "pipe" });
       return true; // nothing staged — nothing to commit
     } catch {
       // exit 1 = staged changes exist — fall through to commit
     }
     // Shell-escape the message to prevent injection — escape all shell metacharacters
-    const escaped = message.replace(/["'`$\\;!&|()<>{}[$\]~*?\n\r]/g, "");
-    execSync(`git commit -m "${escaped}"`, { cwd: portraitDir, stdio: "pipe" });
+    const escaped = message.replace(/["'`$\\;!&|()<>{}[\]~*?\n\r]/g, "");
+    gitExec(`git commit -m "${escaped}"`, { cwd: portraitDir, stdio: "pipe" });
     return true;
   } catch (err) {
     // Check if repo is corrupted
     try {
-      execSync("git status", { cwd: portraitDir, stdio: "pipe" });
+      gitExec("git status", { cwd: portraitDir, stdio: "pipe" });
     } catch {
       // Git repo corrupted — reinitialize
       reportError("Git repo corrupted, reinitializing", "git error");
@@ -108,7 +133,7 @@ export function checkoutHead(portraitDir: string, file: string): boolean {
       reportError(`Invalid filename for checkout: ${file}`, "git error");
       return false;
     }
-    execSync(`git checkout HEAD -- ${file}`, { cwd: portraitDir, stdio: "pipe" });
+    gitExec(`git checkout HEAD -- ${file}`, { cwd: portraitDir, stdio: "pipe" });
     return true;
   } catch {
     return false;

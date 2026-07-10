@@ -55,6 +55,13 @@ describe("lock lifecycle across /reload (session_shutdown release)", () => {
     });
     // NOTE: sqlite-mutex is NOT mocked — the real BEGIN IMMEDIATE mutex is exercised so two
     // connections genuinely contend.
+    // Git audit layer is irrelevant here (the assertions are about mutex release, not commit
+    // messages). Mock it to skip the `git` subprocesses initGit spawns on each boot.
+    vi.doMock("../src/git.js", () => ({
+      initGit: vi.fn(),
+      commitPortrait: vi.fn(() => true),
+      checkoutHead: vi.fn(() => false),
+    }));
   });
 
   afterEach(async () => {
@@ -78,6 +85,7 @@ describe("lock lifecycle across /reload (session_shutdown release)", () => {
     }
     vi.doUnmock("../src/config.js");
     vi.doUnmock("../src/settings-ui.js");
+    vi.doUnmock("../src/git.js");
     vi.resetModules();
     fs.rmSync(tempHome, { recursive: true, force: true });
   });

@@ -40,15 +40,13 @@ describe("portrait cache refresh on session_compact", () => {
     fs.writeFileSync(path.join(holder.portraitDir, "portrait-state.json"), '{"paused":true}');
 
     vi.resetModules();
-    vi.doMock("../src/config.js", async (importOriginal) => {
-      const orig = await importOriginal<typeof import("../src/config.js")>();
-      return {
-        ...orig,
-        getPortraitDir: () => holder.portraitDir,
-        getLockPath: () => path.join(holder.portraitDir, "instance.lock.sqlite"),
-        getCollectLockPath: () => path.join(holder.portraitDir, "collect.lock.sqlite"),
-      };
-    });
+    vi.doMock("../src/config.js", () => ({
+      getPortraitDir: () => holder.portraitDir,
+      getLockPath: () => path.join(holder.portraitDir, "instance.lock.sqlite"),
+      getCollectLockPath: () => path.join(holder.portraitDir, "collect.lock.sqlite"),
+      getSessionDirs: () => [],
+      getBgScanCheckpointsPath: () => "",
+    }));
     // Mock settings-ui so the extension reads schema-derived defaults with the holder's `enabled`
     // flag (no real settings file, no command registration on the fake pi).
     vi.doMock("../src/settings-ui.js", async () => {
@@ -66,6 +64,14 @@ describe("portrait cache refresh on session_compact", () => {
     vi.doMock("../src/snippets/vendored/sqlite-mutex.js", () => ({
       tryAcquireSqliteMutex: async () => null,
     }));
+    // Git audit layer is irrelevant to cache-refresh behavior (it asserts on the injected
+    // systemPrompt, not commit messages). Mock it to skip the ~7 `git` subprocesses that
+    // initGit spawns per boot via the extension's session_start handler.
+    vi.doMock("../src/git.js", () => ({
+      initGit: vi.fn(),
+      commitPortrait: vi.fn(() => true),
+      checkoutHead: vi.fn(() => false),
+    }));
   });
 
   afterEach(async () => {
@@ -78,8 +84,8 @@ describe("portrait cache refresh on session_compact", () => {
     }
     vi.doUnmock("../src/config.js");
     vi.doUnmock("../src/settings-ui.js");
+    vi.doUnmock("../src/git.js");
     vi.doUnmock("../src/snippets/vendored/sqlite-mutex.js");
-    vi.resetModules();
     fs.rmSync(tempHome, { recursive: true, force: true });
   });
 

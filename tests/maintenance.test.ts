@@ -2,11 +2,10 @@
 // SPDX-FileCopyrightText: 2026 avtc <tarasenkov@gmail.com>
 
 import "../src/globals.js";
-import { execSync } from "node:child_process";
 import * as fs from "node:fs";
 import * as os from "node:os";
 import * as path from "node:path";
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import type { PortraitState } from "../src/types.js";
 
 // Mock llm-call before importing maintenance-core
@@ -26,13 +25,13 @@ vi.mock("../src/builder.js", () => ({
 }));
 
 // Mock config
-vi.mock("../src/config.js", async (importOriginal) => {
-  const orig = await importOriginal<typeof import("../src/config.js")>();
-  return {
-    ...orig,
-    getPortraitDir: () => mockPortraitDir,
-  };
-});
+vi.mock("../src/config.js", () => ({
+  getPortraitDir: () => mockPortraitDir,
+  getLockPath: () => "",
+  getCollectLockPath: () => "",
+  getSessionDirs: () => [],
+  getBgScanCheckpointsPath: () => "",
+}));
 
 // Mock footer
 vi.mock("../src/footer.js", () => ({
@@ -47,12 +46,23 @@ vi.mock("../src/error.js", () => ({
 import { buildPortrait } from "../src/builder.js";
 import { maintenance } from "../src/commands/maintenance.js";
 import { setCachedPipelineState } from "../src/footer.js";
-import * as gitNS from "../src/git.js";
-import { initGit } from "../src/git.js";
+import { initGit, resetGitExec, setGitExec } from "../src/git.js";
 import { callPortraitLlm, setDebugStreamSink, setLlmProgressSink } from "../src/llm-call.js";
 import { runMaintenance } from "../src/maintenance-core.js";
 import { loadPortraitState, savePortraitState } from "../src/storage.js";
+import { installRecordingGit } from "./git-recorder.js";
 import { setupTestSettings, teardownTestSettings } from "./settings-helpers.js";
+
+const maintenanceRecording = installRecordingGit();
+
+beforeAll(() => {
+  // Route every git call in src/git.js through the recording runner (no real `git` subprocesses).
+  setGitExec(maintenanceRecording.runner);
+});
+
+afterAll(() => {
+  resetGitExec();
+});
 
 const mockCallPortraitLlm = callPortraitLlm as unknown as ReturnType<typeof vi.fn>;
 const mockBuildPortrait = buildPortrait as unknown as ReturnType<typeof vi.fn>;
@@ -90,10 +100,8 @@ function readTestPortraitRules(dir: string): string[] {
 
 describe("runMaintenance", () => {
   beforeEach(() => {
-    mockPortraitDir = tmpDir();
-    // Initialize git repo
-    initGit(mockPortraitDir);
     vi.resetAllMocks();
+    mockPortraitDir = tmpDir();
     // Wire test settings (schema-derived defaults + test overrides); no real settings file.
     setupTestSettings({
       debugDumpLimit: 30,
@@ -262,7 +270,7 @@ describe("runMaintenance", () => {
     await runMaintenance(undefined);
 
     // No evicted rules → no backfill → last commit is the Phase 1 commit
-    const log = execSync("git log -1 --format=%s", { cwd: mockPortraitDir }).toString().trim();
+    const log = maintenanceRecording.getLatestCommit(mockPortraitDir).toString().trim();
     expect(log).toContain("maintenance");
     expect(log).toContain("1 dropped");
     // Cleaned portrait is committed
@@ -291,7 +299,7 @@ describe("runMaintenance", () => {
     await runMaintenance(undefined);
 
     // Should be TWO commits beyond the init commit: Phase 1 (cleaned) + backfill
-    const log = execSync("git log --format=%s", { cwd: mockPortraitDir }).toString().trim();
+    const log = maintenanceRecording.getCommitLog(mockPortraitDir).toString().trim();
     const lines = log.split("\n");
     // First line is HEAD (most recent) = backfill commit
     expect(lines[0]).toContain("backfill");
@@ -318,12 +326,12 @@ describe("runMaintenance", () => {
     await runMaintenance(undefined);
 
     // Even though backfill failed, Phase 1's cleaned portrait is committed
-    const headPortrait = execSync("git show HEAD:portrait.md", { cwd: mockPortraitDir }).toString();
+    const headPortrait = maintenanceRecording.getHeadPortrait(mockPortraitDir).toString();
     expect(headPortrait).toContain("rule 1");
     expect(headPortrait).toContain("rule 2");
     expect(headPortrait).not.toContain("rule 3");
     // And the Phase 1 commit is in the log
-    const log = execSync("git log --format=%s", { cwd: mockPortraitDir }).toString().trim();
+    const log = maintenanceRecording.getCommitLog(mockPortraitDir).toString().trim();
     expect(log).toContain("cleaned");
   });
 
@@ -357,38 +365,30 @@ describe("runMaintenance", () => {
   // === Phase 2: Backfill tests ===
 
   it("promotes evicted rules in Phase 2 backfill", async () => {
-    // This test asserts ONLY on the orchestration (return message + buildPortrait call count)
-    // it does not read git state. runMaintenance issues 3 git commits (Phase 1 + 2× Phase 2) that
-    // are pure overhead here (~9 git subprocesses). No-op commitPortrait to remove them; the file
-    // writes (writePortrait/writeEvicted) still run and drive the loop logic. See.
-    const commitSpy = vi.spyOn(gitNS, "commitPortrait").mockImplementation(() => true);
-    try {
-      writeTestPortrait(mockPortraitDir, ["rule 1"]);
-      // Write evicted.md with rules to promote
-      const evictedPath = path.join(mockPortraitDir, "evicted.md");
-      fs.writeFileSync(evictedPath, "# Evicted Portrait Rules\nevicted rule 1\n", "utf-8");
+    // commitPortrait is no-op'd globally in beforeEach; this test asserts ONLY on
+    // orchestration (return message + buildPortrait call count), not git state.
+    writeTestPortrait(mockPortraitDir, ["rule 1"]);
+    // Write evicted.md with rules to promote
+    const evictedPath = path.join(mockPortraitDir, "evicted.md");
+    fs.writeFileSync(evictedPath, "# Evicted Portrait Rules\nevicted rule 1\n", "utf-8");
 
-      mockCallPortraitLlm.mockResolvedValue({
-        portrait: ["rule 1"],
-        dropped: [],
-      });
+    mockCallPortraitLlm.mockResolvedValue({
+      portrait: ["rule 1"],
+      dropped: [],
+    });
 
-      // buildPortrait returns result for backfill (once only, then undefined = LLM fail)
-      mockBuildPortrait.mockResolvedValueOnce({
-        inserted: 1,
-        evicted: 0,
-        rules: ["rule 1", "evicted rule 1"],
-        evictedRules: [],
-        droppedRules: [],
-      });
+    // buildPortrait returns result for backfill (once only, then undefined = LLM fail)
+    mockBuildPortrait.mockResolvedValueOnce({
+      inserted: 1,
+      evicted: 0,
+      rules: ["rule 1", "evicted rule 1"],
+      evictedRules: [],
+      droppedRules: [],
+    });
 
-      const result = await runMaintenance(undefined);
-      expect(result).toContain("1 promoted");
-      expect(mockBuildPortrait).toHaveBeenCalledTimes(1);
-    } finally {
-      // Restore the real commitPortrait so subsequent git-asserting tests get real commits.
-      commitSpy.mockRestore();
-    }
+    const result = await runMaintenance(undefined);
+    expect(result).toContain("1 promoted");
+    expect(mockBuildPortrait).toHaveBeenCalledTimes(1);
   });
 
   it("puts mechanically evicted rules back into evicted pool", async () => {
