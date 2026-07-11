@@ -39,7 +39,8 @@
     "test:unit": "node scripts/test-low-priority.cjs vitest run",
     "test": "node scripts/test-low-priority.cjs \"node scripts/run-parallel.cjs \"npm run lint:optional-params :: npm run lint:bare-literals :: npm run lint:design-refs :: npm run lint:bundled-imports :: npm run lint:as-never :: npm run lint :: npm run typecheck :: npm run knip :: npm run dupes\" && vitest run\"",
     "dupes": "jscpd src/ --exit-code --threshold 0.01",
-    "lint:as-never": "node scripts/no-as-never.cjs src/ tests/ index.ts"
+    "lint:as-never": "node scripts/no-as-never.cjs src/ tests/ index.ts",
+    "prepublishOnly": "node scripts/check-symlinks.mjs"
   },
   "dependencies": {
     "avtc-pi-logger": "^1.0.0",
