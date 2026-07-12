@@ -6,9 +6,13 @@ import fs from "node:fs";
 
 if (!fs.existsSync("node_modules")) process.exit(0);
 
-const entries = fs.readdirSync("node_modules").filter(e => e.startsWith("avtc-pi-"));
-const symlinks = entries.filter(e => {
-  try { return fs.lstatSync(`node_modules/${e}`).isSymbolicLink(); } catch { return false; }
+const entries = fs.readdirSync("node_modules").filter((e) => e.startsWith("avtc-pi-"));
+const symlinks = entries.filter((e) => {
+  try {
+    return fs.lstatSync(`node_modules/${e}`).isSymbolicLink();
+  } catch {
+    return false;
+  }
 });
 
 if (symlinks.length) {
@@ -16,6 +20,6 @@ if (symlinks.length) {
   console.error("   Run: rm -rf node_modules && npm install --ignore-scripts");
   console.error("   Then: npm publish");
   console.error("   After: node scripts/link-dev.mjs\n");
-  symlinks.forEach(s => console.error(`   ${s}`));
+  for (const s of symlinks) console.error(`   ${s}`);
   process.exit(1);
 }

@@ -6,7 +6,7 @@ import fs from "node:fs";
 import path from "node:path";
 
 const pkg = JSON.parse(fs.readFileSync("package.json", "utf8"));
-const deps = Object.keys(pkg.dependencies || {}).filter(d => d.startsWith("avtc-pi-"));
+const deps = Object.keys(pkg.dependencies || {}).filter((d) => d.startsWith("avtc-pi-"));
 const isWin = process.platform === "win32";
 const type = isWin ? "junction" : "dir";
 
@@ -15,7 +15,8 @@ if (!fs.existsSync("node_modules")) {
   process.exit(1);
 }
 
-let linked = 0, skipped = 0;
+let linked = 0,
+  skipped = 0;
 for (const dep of deps) {
   const target = path.resolve(`../${dep}`);
   const link = path.resolve(`node_modules/${dep}`);
