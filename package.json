@@ -1,6 +1,6 @@
 {
   "name": "avtc-pi-portrait",
-  "version": "1.0.3",
+  "version": "1.0.4",
   "description": "Builds a behavioral portrait from your session history — learns your corrections and injects them into the system prompt so the agent anticipates them before responding.",
   "type": "module",
   "license": "MIT",
@@ -13,7 +13,7 @@
   "pi": {
     "extensions": [
       "./index.ts",
-      "node_modules/avtc-pi-ui-components/index.ts"
+      "../avtc-pi-ui-components/index.ts"
     ],
     "allowedCodeDeps": [
       "avtc-pi-logger",
@@ -39,8 +39,7 @@
     "test:unit": "node scripts/test-low-priority.cjs vitest run",
     "test": "node scripts/test-low-priority.cjs \"node scripts/run-parallel.cjs \"npm run lint:optional-params :: npm run lint:bare-literals :: npm run lint:design-refs :: npm run lint:bundled-imports :: npm run lint:as-never :: npm run lint :: npm run typecheck :: npm run knip :: npm run dupes\" && vitest run\"",
     "dupes": "jscpd src/ --exit-code --threshold 0.01",
-    "lint:as-never": "node scripts/no-as-never.cjs src/ tests/ index.ts",
-    "prepublishOnly": "node scripts/check-symlinks.mjs"
+    "lint:as-never": "node scripts/no-as-never.cjs src/ tests/ index.ts"
   },
   "dependencies": {
     "avtc-pi-logger": "^1.0.0",
@@ -69,9 +68,6 @@
     "url": "https://github.com/avtc/avtc-pi-portrait/issues"
   },
   "homepage": "https://github.com/avtc/avtc-pi-portrait",
-  "bundledDependencies": [
-    "avtc-pi-ui-components"
-  ],
   "bundleDependencies": [
     "avtc-pi-ui-components"
   ]

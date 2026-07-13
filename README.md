@@ -95,7 +95,11 @@ Cached portrait rules are refreshed from disk on `/reload`.
 
 Portrait dreaming learns from **interaction trios** in your session history — an agent response, your correction or flag, and the agent's improved response. From each trio it extracts a short **behavioral principle**, ranks it against your existing portrait, and keeps the most valuable ones. The portrait is then appended to the system prompt on every agent turn, so the agent anticipates your corrections before it responds. Run `/portrait:maintenance` any time to deduplicate, resolve contradictions, generalize over-specific rules, and drop harmful ones.
 
-> Developed with [Z.ai](https://z.ai/subscribe?ic=N5IV4LLOOV) — get 10% off your subscription via this referral link.
+## Full suite
+
+Check out the full suite of related extensions, [avtc-pi](https://github.com/avtc/avtc-pi) — deterministic feature development, subagent delegation, working-memory, behavioral learning, parallel-work guardrails, durable decisions, notifications, and more.
+
+Developed with [Z.ai](https://z.ai/subscribe?ic=N5IV4LLOOV) — get 10% off your subscription via this referral link.
 
 ## License
 
