@@ -16,9 +16,9 @@
  * requirements (R2-8), acceptance criteria (AC6b), tasks (Task 2.1), phases
  * (P2-1), WN2, "Section N", "Design ref…", and commit-hash refs (commit deadbeef).
  *
- * NOT flagged (the legitimate home for these refs): design docs and `.ff/`
+ * NOT flagged (the legitimate home for these refs): design docs and `.featyard/`
  * artifact docs (plans, research, reviews) — excluded by path. Skill/agent
- * prompts that *instruct* writing refs (e.g. ff-design "label decisions D1, D2")
+ * prompts that *instruct* writing refs (e.g. fy-design "label decisions D1, D2")
  * live under skills//agents/ and are also excluded.
  *
  * Usage:
@@ -83,7 +83,7 @@ const SKIP_DIRS = new Set([
   "dist",
   "build",
   "coverage",
-  ".ff",
+  ".featyard",
   ".pi",
   "reviews",
   // agent-instruction prompts: legitimately contain design-ref EXAMPLES that
@@ -606,7 +606,7 @@ for (const f of files) {
 }
 if (total > 0) {
   console.log(
-    `\nFound ${total} design-doc reference(s) in comments/product-docs. Move them to design docs or .ff/ artifact docs, or strip them. (Run: node scripts/no-design-refs.cjs --fix <paths>)`,
+    `\nFound ${total} design-doc reference(s) in comments/product-docs. Move them to design docs or .featyard/ artifact docs, or strip them. (Run: node scripts/no-design-refs.cjs --fix <paths>)`,
   );
   process.exit(1);
 }

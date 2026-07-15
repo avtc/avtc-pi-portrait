@@ -18,4 +18,4 @@ Once approved, text can be applied directly during implementation. Any subsequen
 - use `npx vitest run` to run specific tests.
 - Update tests and documentation when behavior changes.
 - Follow existing prompts and code style.
-- **Source comments and product docs (README, CONFIGURATION) stay free of design-doc references and historical framing** — no §N, D27, R2-8, "Design ref", "has moved to"/"formerly"/"is now"/"no longer", or "(module.ts)" breadcrumbs. Design-doc and plan-section references belong in design docs and the `.ff/` artifact docs (plans, research, reviews) that trace to them.
+- **Source comments and product docs (README, CONFIGURATION) stay free of design-doc references and historical framing** — no §N, D27, R2-8, "Design ref", "has moved to"/"formerly"/"is now"/"no longer", or "(module.ts)" breadcrumbs. Design-doc and plan-section references belong in design docs and the `.featyard/` artifact docs (plans, research, reviews) that trace to them.

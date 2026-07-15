@@ -10,7 +10,7 @@ import { DROPPED_MD_HEADER, EVICTED_MD_HEADER } from "./storage.js";
 // --- testability seam -------------------------------------------------------
 // Every git invocation routes through this module-level slot. Default = real `execSync`.
 // Tests swap it once (e.g. with a recorder/mock that returns canned output or records commit
-// messages) to avoid spawning `git` subprocesses — mirroring avtc-pi-feature-flow's
+// messages) to avoid spawning `git` subprocesses — mirroring avtc-pi-featyard's
 // `setGitRunner`. Restore with `resetGitExec()`.
 export type GitExec = (cmd: string, opts?: { cwd?: string; stdio?: unknown }) => string;
 
