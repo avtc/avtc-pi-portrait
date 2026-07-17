@@ -6,6 +6,7 @@ import * as os from "node:os";
 import * as path from "node:path";
 import type { ExtensionAPI, ExtensionContext } from "@earendil-works/pi-coding-agent";
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
+import { setTestConfig } from "./setup.js";
 
 /**
  * Idempotent wiring guard: portrait can be bundled into the avtc-pi umbrella AND installed
@@ -23,7 +24,8 @@ import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vite
  * (maintenance-core → builder → llm-call → collector …), cutting this file from ~3.3s to ~1s.
  */
 
-// Mutable holder the config mock reads from. Hoisted so vi.doMock's factory can close over it.
+// Mutable holder for the lock paths the centralized config mock reads from. Hoisted so beforeAll
+// can populate it before the shared module graph is imported.
 const holder = vi.hoisted(() => ({ portraitDir: "" }));
 
 describe("extension entry idempotent wiring guard", () => {
@@ -42,17 +44,10 @@ describe("extension entry idempotent wiring guard", () => {
     // Pause the pipeline so session_start (if a handler were driven) does not schedule a timer.
     fs.writeFileSync(path.join(holder.portraitDir, "portrait-state.json"), '{"paused":true}');
 
-    // Mock config/settings-ui/sqlite BEFORE importing so the graph is evaluated against the mocks.
+    // Mock settings-ui/sqlite BEFORE importing so the graph is evaluated against the mocks.
+    // config.js is mocked centrally in tests/setup.ts; it is redirected to this file's temp
+    // portrait dir in beforeEach (setup.ts clears the holder after every test).
     vi.resetModules();
-    vi.doMock("../src/config.js", async (importOriginal) => {
-      const orig = await importOriginal<typeof import("../src/config.js")>();
-      return {
-        ...orig,
-        getPortraitDir: () => holder.portraitDir,
-        getLockPath: () => path.join(holder.portraitDir, "instance.lock.sqlite"),
-        getCollectLockPath: () => path.join(holder.portraitDir, "collect.lock.sqlite"),
-      };
-    });
     // Mock settings-ui so the extension reads schema-derived defaults (enabled) with no real
     // settings file and no command registration on the fake pi.
     vi.doMock("../src/settings-ui.js", async () => {
@@ -76,6 +71,13 @@ describe("extension entry idempotent wiring guard", () => {
   beforeEach(() => {
     // Ensure a clean wiring flag for every case (vitest isolate:false shares globalThis).
     delete (globalThis as { __avtcPiPortraitWired?: boolean }).__avtcPiPortraitWired;
+    // Re-point the central config mock at this file's temp portrait dir for every case (setup.ts
+    // afterEach clears the holder, so it must be re-set before each test runs).
+    setTestConfig({
+      portraitDir: holder.portraitDir,
+      lockPath: path.join(holder.portraitDir, "instance.lock.sqlite"),
+      collectLockPath: path.join(holder.portraitDir, "collect.lock.sqlite"),
+    });
   });
 
   afterEach(() => {

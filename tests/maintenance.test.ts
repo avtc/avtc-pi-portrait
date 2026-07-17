@@ -9,39 +9,11 @@ import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } 
 import type { PortraitState } from "../src/types.js";
 
 // Mock llm-call before importing maintenance-core
-vi.mock("../src/llm-call.js", () => ({
-  callPortraitLlm: vi.fn(),
-  PAUSED: Symbol("PAUSED"),
-  setLlmProgressSink: vi.fn(),
-  setDebugStreamSink: vi.fn(),
-  makeDebugStreamDumpSink: vi.fn(() => vi.fn()),
-  NO_LLM_PROGRESS_SINK: null,
-  NO_DEBUG_STREAM_SINK: null,
-}));
-
-// Mock builder
-vi.mock("../src/builder.js", () => ({
-  buildPortrait: vi.fn(),
-}));
-
-// Mock config
-vi.mock("../src/config.js", () => ({
-  getPortraitDir: () => mockPortraitDir,
-  getLockPath: () => "",
-  getCollectLockPath: () => "",
-  getSessionDirs: () => [],
-  getBgScanCheckpointsPath: () => "",
-}));
-
-// Mock footer
-vi.mock("../src/footer.js", () => ({
-  setCachedPipelineState: vi.fn(),
-}));
-
-// Mock error
-vi.mock("../src/error.js", () => ({
-  reportError: vi.fn(),
-}));
+// llm-call is mocked centrally in tests/setup.ts (stable callPortraitLlm + sink identities so
+// collector's cached reference matches what tests configure). builder/footer/error are also
+// centralized there with flag-gated stubs; this file opts into them via useStubs in beforeEach.
+// storage/maintenance-core/collector/git stay real here (maintenance.test.ts exercises the real
+// maintenance pipeline and the real git runner seam).
 
 import { buildPortrait } from "../src/builder.js";
 import { maintenance } from "../src/commands/maintenance.js";
@@ -52,6 +24,7 @@ import { runMaintenance } from "../src/maintenance-core.js";
 import { loadPortraitState, savePortraitState } from "../src/storage.js";
 import { installRecordingGit } from "./git-recorder.js";
 import { setupTestSettings, teardownTestSettings } from "./settings-helpers.js";
+import { setTestConfig, useStubs } from "./setup.js";
 
 const maintenanceRecording = installRecordingGit();
 
@@ -100,8 +73,13 @@ function readTestPortraitRules(dir: string): string[] {
 
 describe("runMaintenance", () => {
   beforeEach(() => {
-    vi.resetAllMocks();
+    vi.clearAllMocks();
+    // Stub the dependencies this suite drives (real impls stay available for files that need
+    // them). storage/maintenance-core/collector/git remain real here.
+    useStubs({ builder: true, footer: true, error: true });
     mockPortraitDir = tmpDir();
+    // Redirect the central config mock to this file's temp portrait dir.
+    setTestConfig({ portraitDir: mockPortraitDir });
     // Wire test settings (schema-derived defaults + test overrides); no real settings file.
     setupTestSettings({
       debugDumpLimit: 30,
@@ -812,7 +790,10 @@ describe("maintenance command wrapper", () => {
   beforeEach(() => {
     mockPortraitDir = tmpDir();
     initGit(mockPortraitDir);
-    vi.resetAllMocks();
+    // Redirect the central config mock to this file's temp portrait dir.
+    setTestConfig({ portraitDir: mockPortraitDir });
+    vi.clearAllMocks();
+    useStubs({ builder: true, footer: true, error: true });
 
     // Save and set up globals
     savedGlobal = globalThis.__piPortrait;

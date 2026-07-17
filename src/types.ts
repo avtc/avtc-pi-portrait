@@ -5,7 +5,7 @@
 import type { PortraitUiNotify, PortraitUiSelect } from "./globals.js";
 import type { SqliteMutex } from "./snippets/vendored/sqlite-mutex.js";
 
-export type { ThinkingLevel } from "@earendil-works/pi-ai";
+export type { ThinkingLevel } from "@earendil-works/pi-ai/compat";
 
 // globalThis state
 export interface PortraitState {

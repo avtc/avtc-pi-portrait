@@ -9,7 +9,7 @@ import {
   type AgentTool,
   agentLoop,
 } from "@earendil-works/pi-agent-core";
-import type { Api, Message, Model, ThinkingLevel } from "@earendil-works/pi-ai";
+import type { Api, Message, Model, ThinkingLevel } from "@earendil-works/pi-ai/compat";
 import type { ModelRegistry } from "@earendil-works/pi-coding-agent";
 import { appendDebug } from "./debug.js";
 import { reportError } from "./error.js";

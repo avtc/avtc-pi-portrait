@@ -1615,15 +1615,16 @@ import { vi } from "vitest";
 // reset tests
 // ============================================================================
 import { reset } from "../src/commands/reset.js";
+import { setTestConfig } from "./setup.js";
 
-const mockPortraitDirs: string[] = [];
-vi.mock("../src/config.js", () => ({
-  getPortraitDir: () => (mockPortraitDirs.length > 0 ? mockPortraitDirs[mockPortraitDirs.length - 1] : ""),
-  getLockPath: () => path.join(process.env.TEMP || "/tmp", "portrait-test-instance-lock.json"),
-  getCollectLockPath: () => path.join(process.env.TEMP || "/tmp", "portrait-test-collect-lock.json"),
-  getSessionDirs: () => [],
-  getBgScanCheckpointsPath: () => "",
-}));
+// config.js is mocked centrally in tests/setup.ts (reads from the shared holder). The reset
+// suite redirects the portrait dir per-test via setTestConfig() and pins the lock paths.
+
+/** Fixed lock paths for the reset suite (same values the old per-file config mock returned). */
+const TEST_LOCK_PATHS = {
+  lockPath: path.join(process.env.TEMP || "/tmp", "portrait-test-instance-lock.json"),
+  collectLockPath: path.join(process.env.TEMP || "/tmp", "portrait-test-collect-lock.json"),
+};
 
 describe("reset", () => {
   const tmpDir = () => {
@@ -1668,7 +1669,7 @@ describe("reset", () => {
       lockHeld: true,
       uiSelect: async (_msg: string, _opts: string[]) => uiSelectResponse,
     } as PortraitState;
-    mockPortraitDirs.push(dir);
+    setTestConfig({ portraitDir: dir, ...TEST_LOCK_PATHS });
   };
 
   it("clears portrait.md, evicted.md, checkpoints and resets counters", async () => {
@@ -1693,7 +1694,6 @@ describe("reset", () => {
       expect(state.triosProcessed).toBe(0);
       expect(state.totalKnownTrios).toBe(0);
     } finally {
-      mockPortraitDirs.pop();
       delete globalThis.__piPortrait;
       cleanup(dir);
     }
@@ -1708,7 +1708,6 @@ describe("reset", () => {
       const content = fs.readFileSync(path.join(dir, "portrait.md"), "utf-8");
       expect(content).toContain("rule 1");
     } finally {
-      mockPortraitDirs.pop();
       delete globalThis.__piPortrait;
       cleanup(dir);
     }
@@ -2055,7 +2054,12 @@ describe("collect cancellation", () => {
       runProfilingCycle: null,
       reportError: null,
     };
-    mockPortraitDirs.push(dir);
+    setTestConfig({ portraitDir: dir, ...TEST_LOCK_PATHS });
+    // collect()/maintenance() gate on the collect lock. Wire in-memory stubs so these tests drive
+    // the pipeline directly instead of relying on a leaked real SQLite-mutex closure (the suite
+    // setup clears __piPortrait* between tests to stay hermetic).
+    globalThis.__piPortraitAcquireCollectLock = () => Promise.resolve(true);
+    globalThis.__piPortraitReleaseCollectLock = () => {};
   };
 
   afterEach(() => {
@@ -2077,7 +2081,6 @@ describe("collect cancellation", () => {
       const result = await collect(undefined);
       expect(result).toContain("Collected 0 sequences");
     } finally {
-      mockPortraitDirs.pop();
       vi.restoreAllMocks();
       cleanup(dir);
     }
@@ -2116,7 +2119,6 @@ describe("collect cancellation", () => {
       const result = await collect(undefined);
       expect(result).toContain("Collection stopped");
     } finally {
-      mockPortraitDirs.pop();
       vi.restoreAllMocks();
       cleanup(dir);
     }
@@ -2135,7 +2137,6 @@ describe("collect cancellation", () => {
       await collect(undefined);
       expect(globalThis.__piPortrait?.collectCancelled).toBe(false);
     } finally {
-      mockPortraitDirs.pop();
       vi.restoreAllMocks();
       cleanup(dir);
     }
@@ -2150,7 +2151,6 @@ describe("collect cancellation", () => {
       expect(result).toContain("Collection failed");
       expect(globalThis.__piPortrait?.collectCancelled).toBe(false);
     } finally {
-      mockPortraitDirs.pop();
       vi.restoreAllMocks();
       cleanup(dir);
     }
@@ -2180,7 +2180,6 @@ describe("collect cancellation", () => {
       expect(persisted.paused).toBe(true);
       expect(globalThis.__piPortrait?.collectCancelled).toBe(false);
     } finally {
-      mockPortraitDirs.pop();
       vi.restoreAllMocks();
       cleanup(dir);
     }

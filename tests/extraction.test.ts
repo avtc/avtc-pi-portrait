@@ -22,32 +22,11 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import * as config from "../src/config.js";
 import { initGit } from "../src/git.js";
 
-// Mock llm-call before importing collector
-vi.mock("../src/llm-call.js", async (importOriginal) => {
-  const orig = await importOriginal<typeof import("../src/llm-call.js")>();
-  return {
-    ...orig,
-    callPortraitLlm: vi.fn(),
-  };
-});
-
-// Mock config to control portrait dir
-const mockPortraitDirs: string[] = [];
-vi.mock("../src/config.js", () => ({
-  getPortraitDir: () => (mockPortraitDirs.length > 0 ? mockPortraitDirs[mockPortraitDirs.length - 1] : ""),
-  getLockPath: () => "",
-  getCollectLockPath: () => "",
-  getSessionDirs: () => [],
-  getBgScanCheckpointsPath: () => "",
-}));
-
-// Git audit layer is irrelevant to extraction tests (they assert on the debug dump output,
-// not commit messages). Mock it to skip the `git` subprocess initGit spawns per tmpDir.
-vi.mock("../src/git.js", () => ({
-  initGit: vi.fn(),
-  commitPortrait: vi.fn(() => true),
-  checkoutHead: vi.fn(() => false),
-}));
+// config.js and llm-call.js are mocked centrally in tests/setup.ts (one stable identity per stubbed
+// function), so this file does not declare competing mocks. git (and every other stubbable module)
+// is also centralized there with a flag-gated stub; extraction opts into the git stub (the git
+// audit layer is irrelevant here — these tests assert on the debug dump, not commit messages) and
+// otherwise runs against the real collector/builder/footer/error.
 
 import { scanSessions } from "../src/collector.js";
 // Import after mocks
@@ -55,6 +34,7 @@ import { callPortraitLlm } from "../src/llm-call.js";
 import type { PortraitPipelineState } from "../src/types.js";
 import { DEFAULT_PIPELINE_STATE } from "../src/types.js";
 import { setupTestSettings, teardownTestSettings } from "./settings-helpers.js";
+import { setTestConfig, useStubs } from "./setup.js";
 
 const mockCallPortraitLlm = callPortraitLlm as unknown as ReturnType<typeof vi.fn>;
 
@@ -139,7 +119,10 @@ describe("enriched extraction summary", () => {
 
   beforeEach(() => {
     portraitDir = tmpDir();
-    mockPortraitDirs.push(portraitDir);
+    // Stub git so no real `git` subprocess runs during initGit.
+    useStubs({ git: true });
+    // Redirect the central config mock to this file's temp portrait dir.
+    setTestConfig({ portraitDir });
 
     // Create session directory structure: sessions/project/session.jsonl
     sessionDir = path.join(portraitDir, "sessions", "test-project");
@@ -159,7 +142,6 @@ describe("enriched extraction summary", () => {
   });
 
   afterEach(() => {
-    mockPortraitDirs.pop();
     vi.restoreAllMocks();
     teardownTestSettings();
     cleanup(portraitDir);

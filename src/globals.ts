@@ -9,7 +9,7 @@
  * `/reload`. These declarations make every access type-safe instead of `globalThis as any`.
  */
 
-import type { Api, Model } from "@earendil-works/pi-ai";
+import type { Api, Model } from "@earendil-works/pi-ai/compat";
 import type { ExtensionContext, ModelRegistry } from "@earendil-works/pi-coding-agent";
 import type { PortraitPipelineState, PortraitState } from "./types.js";
 

@@ -3,56 +3,11 @@
 
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-// Mock dependencies before importing pipeline
-vi.mock("../src/config.js", () => ({
-  getPortraitDir: vi.fn(() => "/tmp/portrait"),
-  getSessionDirs: vi.fn(() => ["/tmp/sessions"]),
-}));
-
-vi.mock("../src/collector.js", () => ({
-  scanSessions: vi.fn(),
-  discoverFiles: vi.fn(() => []),
-  countPendingTrios: vi.fn().mockResolvedValue(0),
-}));
-
-const globalMockState: Record<string, unknown> = {
-  totalKnownTrios: 0,
-  triosProcessed: 0,
-  scanSessionKB: 0,
-  scanRemainingKB: 0,
-  pipelinePhase: "idle",
-  remainingFiles: 0,
-  lastPipelineRun: null,
-  lastScanTimestamp: null,
-};
-
-vi.mock("../src/builder.js", () => ({
-  buildPortrait: vi.fn(),
-}));
-
-vi.mock("../src/storage.js", () => {
-  return {
-    loadPortraitState: vi.fn(() => globalMockState),
-    savePortraitState: vi.fn((_dir: string, state: Record<string, unknown>) => {
-      Object.assign(globalMockState, state);
-    }),
-    readPortrait: vi.fn(),
-    parsePortraitRules: vi.fn(() => []),
-  };
-});
-
-vi.mock("../src/footer.js", () => ({
-  setCachedPipelineState: vi.fn(),
-}));
-
-vi.mock("../src/maintenance-core.js", () => ({
-  runMaintenance: vi.fn().mockResolvedValue("Maintenance complete."),
-  NO_CANCEL_CHECK: undefined,
-}));
-
-vi.mock("../src/error.js", () => ({
-  reportError: vi.fn(),
-}));
+// config.js + llm-call.js are mocked centrally in tests/setup.ts. The remaining dependencies
+// (collector, builder, storage, footer, maintenance-core, error) are also centralized there with
+// flag-gated stubs: the real implementations are always available, and a stub activates only when
+// its flag is on (declared per-test via useStubs). This avoids the isolate:false mock collision
+// where one file's vi.mock would decide a module's identity for the whole process.
 
 import { buildPortrait } from "../src/builder.js";
 import { countPendingTrios, scanSessions } from "../src/collector.js";
@@ -60,6 +15,7 @@ import { runMaintenance } from "../src/maintenance-core.js";
 import { resetPipelineState, runPipelineLoop } from "../src/pipeline.js";
 import type { PortraitSettings } from "../src/schema.js";
 import { loadPortraitState, parsePortraitRules, readPortrait } from "../src/storage.js";
+import { getStubPortraitState, setTestConfig, useStubs } from "./setup.js";
 
 const mockScanSessions = scanSessions as unknown as ReturnType<typeof vi.fn>;
 const mockBuildPortrait = buildPortrait as unknown as ReturnType<typeof vi.fn>;
@@ -98,10 +54,21 @@ describe("runPipelineLoop", () => {
   beforeEach(() => {
     vi.useFakeTimers();
     vi.clearAllMocks();
+    // Stub every dependency pipeline drives (real impls stay available for files that need them).
+    useStubs({
+      collector: true,
+      builder: true,
+      storage: true,
+      footer: true,
+      maintenanceCore: true,
+      error: true,
+    });
+    // Redirect the central config mock to the fixed paths this suite expects.
+    setTestConfig({ portraitDir: "/tmp/portrait", sessionDirs: ["/tmp/sessions"] });
     resetPipelineState(); // Reset pendingBgScan for test isolation
 
-    // Reset mock state counter
-    globalMockState.rulesInsertedSinceMaintenance = 0;
+    // Reset mock state counter (centralized storage stub state)
+    getStubPortraitState().rulesInsertedSinceMaintenance = 0;
 
     // Default: no more files after first scan
     mockScanSessions.mockResolvedValue({
@@ -291,7 +258,7 @@ describe("runPipelineLoop", () => {
     await vi.advanceTimersByTimeAsync(10);
 
     // totalKnownTrios should be 42 (set by bg scan, preserved by finalization)
-    expect(globalMockState.totalKnownTrios).toBe(42);
+    expect(getStubPortraitState().totalKnownTrios).toBe(42);
   });
 
   it("increments rulesInsertedSinceMaintenance counter on buildPortrait", async () => {
@@ -305,7 +272,7 @@ describe("runPipelineLoop", () => {
 
     await runPipelineLoop(defaultSettings, Infinity, () => false);
 
-    expect(globalMockState.rulesInsertedSinceMaintenance).toBe(3);
+    expect(getStubPortraitState().rulesInsertedSinceMaintenance).toBe(3);
   });
 
   it("triggers auto-maintenance when counter reaches threshold", async () => {
