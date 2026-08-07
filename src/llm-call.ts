@@ -8,6 +8,7 @@ import {
   type AgentMessage,
   type AgentTool,
   agentLoop,
+  type StreamFn,
 } from "@earendil-works/pi-agent-core";
 import type { Api, Message, Model, ThinkingLevel } from "@earendil-works/pi-ai/compat";
 import type { ModelRegistry } from "@earendil-works/pi-coding-agent";
@@ -308,7 +309,10 @@ export async function attemptWithRetries<T>(
       }
     };
     try {
-      const stream = agentLoop(messages, context, config, signal);
+      // pi 0.84.1 made streamFn a required agentLoop arg; pass undefined (cast to
+      // StreamFn) so pi-agent-core falls back to the host-installed default streamFn,
+      // which pi-coding-agent sets at startup and dispatches through the model runtime.
+      const stream = agentLoop(messages, context, config, signal, undefined as unknown as StreamFn);
       for await (const event of stream) {
         if (event.type === "message_update") {
           const sub = event.assistantMessageEvent;

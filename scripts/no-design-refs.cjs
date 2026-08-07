@@ -40,6 +40,10 @@ const TARGETS = process.argv.slice(2).filter((a) => !a.startsWith("--"));
 const TOKEN_RES = [
   /see commit [0-9a-f]{7,40}\b/gi,
   /\bcommit [0-9a-f]{7,40}\b/gi,
+  // hex cross-reference ids (recall observation/reflection ids, decision
+  // hashes) like `#9af4c87d573c` / `#b3e3ea63ccc4` — 10+ hex after `#` so 6/8-char
+  // color codes (`#rrggbb`/`#rrggbbaa`) never collide.
+  /(?<!\w)#[0-9a-f]{10,}\b/gi,
   /\bDesign ref: Section \d+[^\n]*/gi,
   /\bDesign ref\b[^\n]*/gi,
   /\bdesign ref\b[^\n]*/gi,
@@ -47,6 +51,9 @@ const TOKEN_RES = [
   /(?<!\w)§[\w/-]+(?:\.[\w/-]+)*(?: step \d+)?/g,
   /design D\d{1,2}(?: line \d+)?\b/gi,
   /\bD\d{1,2}(?: line \d+)?\b/g,
+  // architectural-decision refs (AD1-AD16+): the `\bD\d` pattern above misses
+  // these because A→D has no word boundary.
+  /\bAD\d{1,2}\b/g,
   /\bR\d{1,2}-\d{1,3}\b/g,
   /\bAC\d+\w?\b/g,
   /\bTask \d+\.\d+\b/g,
@@ -60,6 +67,20 @@ const TOKEN_RES = [
   // legitimate technical term that collides with criterion 'C1'. Scoped to comments +
   // test names + product .md by the tokenizer.
   /\b[ABCEFG][1-9]\d?\b(?!\s*control\b)/gi,
+  // plan-task shorthand refs (T15, T22) the `Task N.N` pattern above misses;
+  // and prose-form user-decision citations (`decision #20`, `decision #2`).
+  /\bT\d{1,2}\b/g,
+  /\bdecision[\s*]+#\d+\b/gi,
+  // task-plan issue refs ("Issue 6", "Issue 10") — capitalized "Issue" + digits;
+  // none of the patterns above catch this shape.
+  /\bIssue \d+\b/g,
+  // design fork refs ("fork#3", "fork #2") — distinctive enough for case-insensitive.
+  /\bfork\s*#\d+\b/gi,
+  // bare user-decision number citations ("#51", "#40") that escape the worded
+  // `decision #N` pattern above. 2+ digits (not starting with 0) avoids the
+  // single-digit line/step false positives ("line #5", "step #2"); recall/commit
+  // hex ids are already caught by the 10+hex pattern.
+  /(?<!\w)#[1-9]\d+\b/g,
   /\biter-\d+\b/gi,
   /\bPhase [AB]\b/g,
 ];
@@ -91,7 +112,7 @@ const SKIP_DIRS = new Set([
   "skills",
   "agents",
 ]);
-const SKIP_PATH_PARTS = ["docs/ff", "designs", "docs/design"];
+const SKIP_PATH_PARTS = ["docs/featyard", "designs", "docs/design"];
 
 function* walk(dir) {
   for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
