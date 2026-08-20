@@ -1,6 +1,6 @@
 {
   "name": "avtc-pi-portrait",
-  "version": "1.0.7",
+  "version": "1.0.8",
   "description": "Builds a behavioral portrait from your session history — learns your corrections and injects them into the system prompt so the agent anticipates them before responding.",
   "type": "module",
   "license": "MIT",
@@ -43,7 +43,7 @@
   },
   "dependencies": {
     "avtc-pi-logger": "^1.0.3",
-    "avtc-pi-settings-ui": "^1.0.8",
+    "avtc-pi-settings-ui": "^1.0.9",
     "avtc-pi-ui-components": "^1.0.3"
   },
   "devDependencies": {
