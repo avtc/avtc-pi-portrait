@@ -103,7 +103,10 @@ function emptyStream() {
 const NO_TOOL_CALLED_CONTEXT = "Previous call failed. Please return valid JSON using the tool.";
 
 describe("attemptWithRetries backoff", () => {
-  const context: AgentContext = { systemPrompt: "s", messages: [], tools: [] as AgentTool[] };
+  const context: AgentContext = {
+    messages: [{ role: "system", content: "s", timestamp: Date.now() }],
+    tools: [] as AgentTool[],
+  };
   const config = {} as unknown as AgentLoopConfig;
   beforeEach(() => {
     mockAgentLoop.mockReset();

@@ -184,10 +184,10 @@ export async function callPortraitLlm<T>(
   // back to settings.timeoutMs for normal calls.
   const timeoutMs = timeoutOverride === null ? null : settings.timeoutMs;
 
-  // Build context
+  // Build context — pi ≥0.87: AgentContext.systemPrompt was removed; the prompt
+  // rides as the transcript's leading system message instead.
   const context: AgentContext = {
-    systemPrompt,
-    messages: [],
+    messages: [{ role: "system", content: systemPrompt, timestamp: Date.now() }],
     tools: [tool],
   };
 
