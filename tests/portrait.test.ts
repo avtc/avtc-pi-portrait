@@ -2430,3 +2430,25 @@ describe("powershell tool capture (pi 0.84.3+)", () => {
     );
   });
 });
+
+describe("owl_recall (session-owl) capture", () => {
+  it("summarizes owl_recall by ids when present", () => {
+    expect(summarizeToolCall("owl_recall", { ids: ["n23", "o5"] })).toBe("[owl_recall: n23,o5]");
+  });
+
+  it("summarizes owl_recall by query when no ids", () => {
+    expect(summarizeToolCall("owl_recall", { query: "publish round" })).toBe("[owl_recall: ?q publish round]");
+  });
+
+  it("summarizes owl_recall bare call", () => {
+    expect(summarizeToolCall("owl_recall", {})).toBe("[owl_recall: *]");
+  });
+
+  it("skips owl_recall results (memory research material)", () => {
+    expect(summarizeToolResult([{ type: "text", text: "x".repeat(2000) }], "owl_recall")).toBe("");
+  });
+
+  it("recall (pi-observational-memory) summary unchanged", () => {
+    expect(summarizeToolCall("recall", { id: "aabbccddeeff" })).toBe("[recall: aabbccddeeff]");
+  });
+});

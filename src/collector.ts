@@ -481,6 +481,13 @@ export function summarizeToolCall(name: string, args: unknown): string {
       return `[web_fetch: ${a.url || "?"}]`;
     case "recall":
       return `[recall: ${a.id || "?"}]`;
+    case "owl_recall": {
+      // session-owl's memory browser (ids[] / query params — unlike pi-observational-memory's `recall` id param).
+      const ids = (a.ids as string[] | undefined) || [];
+      if (ids.length > 0) return `[owl_recall: ${ids.join(",")}]`;
+      const query = typeof a.query === "string" && a.query ? a.query : null;
+      return query ? `[owl_recall: ?q ${query}]` : "[owl_recall: *]";
+    }
     case "plan_tracker":
       return `[plan_tracker: ${a.action || "?"}]`;
     case "phase_ready":
@@ -527,6 +534,7 @@ export function summarizeToolResult(content: unknown, toolName: string | undefin
       toolName === "web_search" ||
       toolName === "web_fetch" ||
       toolName === "recall" ||
+      toolName === "owl_recall" ||
       toolName === "bash" ||
       toolName === "powershell" ||
       toolName.startsWith("todo_") ||
