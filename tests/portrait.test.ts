@@ -2408,3 +2408,25 @@ describe("evicted.md no cap", () => {
     }
   });
 });
+
+describe("powershell tool capture (pi 0.84.3+)", () => {
+  it("summarizes powershell call as command string, not JSON blob", () => {
+    expect(summarizeToolCall("powershell", { command: "git log --oneline -5" })).toBe(
+      "[powershell: git log --oneline -5]",
+    );
+  });
+
+  it("summarizes powershell call with missing command gracefully", () => {
+    expect(summarizeToolCall("powershell", {})).toBe("[powershell: ?]");
+  });
+
+  it("skips powershell results like bash (output is noise)", () => {
+    expect(summarizeToolResult([{ type: "text", text: "x".repeat(1000) }], "powershell")).toBe("");
+  });
+
+  it("still returns subagent results in full", () => {
+    expect(summarizeToolResult([{ type: "text", text: "delegated work output" }], "subagent")).toBe(
+      "delegated work output",
+    );
+  });
+});

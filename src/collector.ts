@@ -462,6 +462,9 @@ export function summarizeToolCall(name: string, args: unknown): string {
     }
     case "bash":
       return `[bash: ${a.command || "?"}]`;
+    case "powershell":
+      // PowerShell shell tool (pi ≥ 0.84.3) — same command-shaped input as bash.
+      return `[powershell: ${a.command || "?"}]`;
     case "ask_user_question": {
       const questions = (a.questions as Array<{ question?: string; options?: string[] }> | undefined) || [];
       const qText = questions.map((q) => `${q.question || "?"} (${(q.options || []).join("/")})`).join("; ");
@@ -525,6 +528,7 @@ export function summarizeToolResult(content: unknown, toolName: string | undefin
       toolName === "web_fetch" ||
       toolName === "recall" ||
       toolName === "bash" ||
+      toolName === "powershell" ||
       toolName.startsWith("todo_") ||
       toolName === "plan_tracker" ||
       toolName === "phase_ready" ||
