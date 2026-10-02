@@ -492,6 +492,14 @@ export function summarizeToolCall(name: string, args: unknown): string {
       return `[plan_tracker: ${a.action || "?"}]`;
     case "phase_ready":
       return "[phase_ready]";
+    case "task_ready_advance":
+      return `[task_ready_advance: ${a.taskToActivate ?? "finish"}]`;
+    case "user_decision_add":
+      return `[user_decision_add: ${a.summary || "?"}]`;
+    case "user_decision_list":
+      return "[user_decision_list]";
+    case "user_decision_detail":
+      return `[user_decision_detail: ${a.id ?? "?"}]`;
     case "fork":
       return "[fork]";
     case "todo_init":
@@ -541,6 +549,8 @@ export function summarizeToolResult(content: unknown, toolName: string | undefin
       toolName === "plan_tracker" ||
       toolName === "phase_ready" ||
       toolName === "ask_user_question" ||
+      toolName === "task_ready_advance" ||
+      toolName.startsWith("user_decision_") ||
       toolName === "fork")
   ) {
     return "";

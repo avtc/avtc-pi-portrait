@@ -2452,3 +2452,34 @@ describe("owl_recall (session-owl) capture", () => {
     expect(summarizeToolCall("recall", { id: "aabbccddeeff" })).toBe("[recall: aabbccddeeff]");
   });
 });
+
+describe("avtc tool summaries (featyard / user-decisions)", () => {
+  it("summarizes task_ready_advance with task name", () => {
+    expect(summarizeToolCall("task_ready_advance", { taskToActivate: "1.2 tests" })).toBe(
+      "[task_ready_advance: 1.2 tests]",
+    );
+  });
+
+  it("summarizes task_ready_advance finish call", () => {
+    expect(summarizeToolCall("task_ready_advance", { taskToActivate: null })).toBe("[task_ready_advance: finish]");
+  });
+
+  it("summarizes user_decision_add with summary", () => {
+    expect(summarizeToolCall("user_decision_add", { summary: "ship on Friday" })).toBe(
+      "[user_decision_add: ship on Friday]",
+    );
+  });
+
+  it("summarizes user_decision_list bare", () => {
+    expect(summarizeToolCall("user_decision_list", {})).toBe("[user_decision_list]");
+  });
+
+  it("summarizes user_decision_detail with id", () => {
+    expect(summarizeToolCall("user_decision_detail", { id: 7 })).toBe("[user_decision_detail: 7]");
+  });
+
+  it("skips results of these workflow tools", () => {
+    expect(summarizeToolResult([{ type: "text", text: "ok" }], "task_ready_advance")).toBe("");
+    expect(summarizeToolResult([{ type: "text", text: "ok" }], "user_decision_add")).toBe("");
+  });
+});
