@@ -1,14 +1,13 @@
 // SPDX-License-Identifier: MIT
 // SPDX-FileCopyrightText: 2026 avtc <tarasenkov@gmail.com>
 
-import * as fs from "node:fs";
-import * as os from "node:os";
 import * as path from "node:path";
 import { describe, expect, it } from "vitest";
 import { acquireSqliteMutex, type SqliteMutex, tryAcquireSqliteMutex } from "../src/snippets/vendored/sqlite-mutex.js";
+import { tempDir } from "./temp-dir.js";
 
 function tmpLockPath(): string {
-  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "sqlite-mutex-"));
+  const dir = tempDir("sqlite-mutex");
   return path.join(dir, "test.lock.sqlite");
 }
 
@@ -177,10 +176,17 @@ describe("tryAcquireSqliteMutex — non-blocking try", () => {
   it("the returned mutex is a real holder: a blocking acquire blocks while it is held", async () => {
     const lock = tmpLockPath();
     const m = must(await tryAcquireSqliteMutex(lock));
+    const ac = new AbortController();
+    const blocked = acquireSqliteMutex(lock, ac.signal);
     try {
-      await assertPending(acquireSqliteMutex(lock, null), 60); // blocks while tryAcquire holds it
+      await assertPending(blocked, 60); // blocks while tryAcquire holds it
     } finally {
       m.release();
     }
+    // stop the probe acquire — left floating, its busy-retry connection stays open on the
+    // lock dir (and would re-acquire the lock after the release above), keeping the temp
+    // dir undeletable at the file sweep
+    ac.abort();
+    await expect(blocked).rejects.toThrow(/aborted/);
   });
 });

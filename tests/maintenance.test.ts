@@ -3,7 +3,6 @@
 
 import "../src/globals.js";
 import * as fs from "node:fs";
-import * as os from "node:os";
 import * as path from "node:path";
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import type { PortraitState } from "../src/types.js";
@@ -25,6 +24,7 @@ import { loadPortraitState, savePortraitState } from "../src/storage.js";
 import { installRecordingGit } from "./git-recorder.js";
 import { setupTestSettings, teardownTestSettings } from "./settings-helpers.js";
 import { setTestConfig, useStubs } from "./setup.js";
+import { tempDir } from "./temp-dir.js";
 
 const maintenanceRecording = installRecordingGit();
 
@@ -46,9 +46,7 @@ const mockSetDebugStreamSink = setDebugStreamSink as unknown as ReturnType<typeo
 let mockPortraitDir: string;
 
 function tmpDir(): string {
-  const dir = path.join(os.tmpdir(), `portrait-maint-${Date.now()}-${Math.random().toString(36).slice(2)}`);
-  fs.mkdirSync(dir, { recursive: true });
-  return dir;
+  return tempDir("portrait-maint");
 }
 
 function cleanup(dir: string) {

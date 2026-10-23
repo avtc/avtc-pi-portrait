@@ -2,10 +2,10 @@
 // SPDX-FileCopyrightText: 2026 avtc <tarasenkov@gmail.com>
 
 import * as fs from "node:fs";
-import * as os from "node:os";
 import * as path from "node:path";
 import type { ExtensionAPI, ExtensionContext } from "@earendil-works/pi-coding-agent";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { tempDir } from "./temp-dir.js";
 
 /**
  * : portrait refreshes cachedPortrait only at session_start, so it goes stale mid-session
@@ -29,7 +29,7 @@ describe("portrait cache refresh on session_compact", () => {
   let portraitPath: string;
 
   beforeEach(async () => {
-    tempHome = fs.mkdtempSync(path.join(os.tmpdir(), "portrait-d12-"));
+    tempHome = tempDir("portrait-d12");
     holder.portraitDir = path.join(tempHome, "portrait");
     holder.enabled = true;
     holder.branch = []; // reset fork-state seeded branch between tests

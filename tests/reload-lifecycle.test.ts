@@ -2,10 +2,10 @@
 // SPDX-FileCopyrightText: 2026 avtc <tarasenkov@gmail.com>
 
 import * as fs from "node:fs";
-import * as os from "node:os";
 import * as path from "node:path";
 import type { ExtensionAPI, ExtensionContext } from "@earendil-works/pi-coding-agent";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { tempDir } from "./temp-dir.js";
 
 /**
  *  reload lifecycle: the SQLite mutex (BEGIN IMMEDIATE) is held by an open connection on
@@ -26,7 +26,7 @@ describe("lock lifecycle across /reload (session_shutdown release)", () => {
     // Idempotent wiring guard (isolate:false shares globalThis): ensure this file can boot
     // the extension fresh regardless of suite ordering, otherwise the entry may no-op.
     delete (globalThis as { __avtcPiPortraitWired?: boolean }).__avtcPiPortraitWired;
-    tempHome = fs.mkdtempSync(path.join(os.tmpdir(), "portrait-reload-"));
+    tempHome = tempDir("portrait-reload");
     holder.portraitDir = path.join(tempHome, "portrait");
     fs.mkdirSync(holder.portraitDir, { recursive: true });
     fs.writeFileSync(path.join(holder.portraitDir, "portrait.md"), "## Portrait");

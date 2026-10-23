@@ -1,17 +1,16 @@
 // SPDX-License-Identifier: MIT
 // SPDX-FileCopyrightText: 2026 avtc <tarasenkov@gmail.com>
 
-import * as fs from "node:fs";
-import * as os from "node:os";
 import * as path from "node:path";
 import { describe, expect, it } from "vitest";
 import { getCollectLockPath, getLockPath } from "../src/config.js";
 import { type SqliteMutex, tryAcquireSqliteMutex } from "../src/snippets/vendored/sqlite-mutex.js";
+import { tempDir } from "./temp-dir.js";
 
 // Mutual-exclusion tests use TEMP lock DBs (not the real ~/.pi/portrait/ paths) so they
 // never contend with a live portrait instance that may be holding the real instance lock.
 function tmpLockDb(name: string): string {
-  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "portrait-lock-"));
+  const dir = tempDir("portrait-lock");
   return path.join(dir, name);
 }
 

@@ -16,7 +16,6 @@
  */
 
 import * as fs from "node:fs";
-import * as os from "node:os";
 import * as path from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import * as config from "../src/config.js";
@@ -35,6 +34,7 @@ import type { PortraitPipelineState } from "../src/types.js";
 import { DEFAULT_PIPELINE_STATE } from "../src/types.js";
 import { setupTestSettings, teardownTestSettings } from "./settings-helpers.js";
 import { setTestConfig, useStubs } from "./setup.js";
+import { tempDir } from "./temp-dir.js";
 
 const mockCallPortraitLlm = callPortraitLlm as unknown as ReturnType<typeof vi.fn>;
 
@@ -88,8 +88,7 @@ function createSessionFile(
 }
 
 function tmpDir(): string {
-  const dir = path.join(os.tmpdir(), `portrait-extraction-test-${Date.now()}-${Math.random().toString(36).slice(2)}`);
-  fs.mkdirSync(dir, { recursive: true });
+  const dir = tempDir("portrait-extraction-test");
   initGit(dir);
   return dir;
 }

@@ -32,7 +32,8 @@
 
 import * as os from "node:os";
 import * as path from "node:path";
-import { afterEach, beforeEach, vi } from "vitest";
+import { afterAll, afterEach, beforeEach, vi } from "vitest";
+import { sweepTempDirs } from "./temp-dir.js";
 
 /**
  * Per-test portrait configuration holder. `vi.mock("../src/config.js")` below reads every field
@@ -322,6 +323,11 @@ interface TestMockBag {
 // waits (e.g. the sqlite-mutex busy-retry loop) and time the test out at 30s.
 beforeEach(() => {
   vi.useRealTimers();
+});
+
+// Every tempDir() handed out in the file — see tests/temp-dir.ts.
+afterAll(() => {
+  sweepTempDirs();
 });
 
 // Reset global hazards after each test so nothing leaks into the next file's tests.

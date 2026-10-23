@@ -11,9 +11,8 @@
 // resolvable, so `execSync("git --version")` throws — exactly the "git not installed" condition.
 // `vi.resetModules()` + a fresh dynamic import gives a clean `_gitAvailable` cache per test.
 import * as fs from "node:fs";
-import * as os from "node:os";
-import * as path from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { tempDir } from "./temp-dir.js";
 
 type GitModule = typeof import("../src/git.js");
 
@@ -24,7 +23,7 @@ describe("git availability — graceful degradation when git is absent", () => {
   const reportSpy = vi.fn((_msg: string, _source: string) => {});
 
   beforeEach(() => {
-    dir = fs.mkdtempSync(path.join(os.tmpdir(), "portrait-git-avail-"));
+    dir = tempDir("portrait-git-avail");
     origPath = process.env.PATH;
     origReporter = (globalThis as { __piPortraitReportError?: (m: string, s: string) => void }).__piPortraitReportError;
     (globalThis as { __piPortraitReportError?: (m: string, s: string) => void }).__piPortraitReportError = reportSpy;

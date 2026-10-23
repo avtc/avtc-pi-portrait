@@ -2,10 +2,10 @@
 // SPDX-FileCopyrightText: 2026 avtc <tarasenkov@gmail.com>
 
 import * as fs from "node:fs";
-import * as os from "node:os";
 import * as path from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { appendDebug, openDebugDump } from "../src/debug.js";
+import { tempDir } from "./temp-dir.js";
 
 /** Max debug files to keep (limit=1 prunes all but newest) */
 const DEBUG_LIMIT_1 = 1;
@@ -13,9 +13,7 @@ const DEBUG_LIMIT_1 = 1;
 let dir: string;
 
 function tmpDir(): string {
-  const d = path.join(os.tmpdir(), `portrait-debug-${Date.now()}-${Math.random().toString(36).slice(2)}`);
-  fs.mkdirSync(d, { recursive: true });
-  return d;
+  return tempDir("portrait-debug");
 }
 
 describe("debug dump helpers", () => {

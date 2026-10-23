@@ -2,11 +2,11 @@
 // SPDX-FileCopyrightText: 2026 avtc <tarasenkov@gmail.com>
 
 import * as fs from "node:fs";
-import * as os from "node:os";
 import * as path from "node:path";
 import type { ExtensionAPI, ExtensionContext } from "@earendil-works/pi-coding-agent";
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { setTestConfig } from "./setup.js";
+import { tempDir } from "./temp-dir.js";
 
 /**
  * Idempotent wiring guard: portrait can be bundled into the avtc-pi umbrella AND installed
@@ -37,7 +37,7 @@ describe("extension entry idempotent wiring guard", () => {
     // Ensure a clean wiring flag before the first import (isolate:false shares globalThis).
     delete (globalThis as { __avtcPiPortraitWired?: boolean }).__avtcPiPortraitWired;
 
-    tempHome = fs.mkdtempSync(path.join(os.tmpdir(), "portrait-idem-"));
+    tempHome = tempDir("portrait-idem");
     holder.portraitDir = path.join(tempHome, "portrait");
     fs.mkdirSync(holder.portraitDir, { recursive: true });
     fs.writeFileSync(path.join(holder.portraitDir, "portrait.md"), "## Portrait");
