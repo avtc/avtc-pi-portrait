@@ -1,76 +1,76 @@
 {
-  "name": "avtc-pi-portrait",
-  "version": "1.1.1",
-  "description": "Builds a behavioral portrait from your session history — learns your corrections and injects them into the system prompt so the agent anticipates them before responding.",
-  "type": "module",
-  "license": "MIT",
-  "keywords": [
-    "pi-package",
-    "pi-extension"
-  ],
-  "main": "./index.ts",
-  "types": "./index.ts",
-  "pi": {
-    "extensions": [
-      "./index.ts",
-      "../avtc-pi-ui-components/index.ts"
-    ],
-    "allowedCodeDeps": [
-      "avtc-pi-logger",
-      "avtc-pi-settings-ui"
-    ],
-    "image": "https://raw.githubusercontent.com/avtc/avtc-pi-portrait/main/assets/images/cover.png"
-  },
-  "files": [
-    "index.ts",
-    "src/",
-    "docs/",
-    "assets/images/",
-    "LICENSE",
-    "README.md"
-  ],
-  "scripts": {
-    "lint": "biome check .",
-    "lint:optional-params": "node scripts/no-optional-params.cjs src/ tests/",
-    "lint:bare-literals": "node scripts/no-bare-literals.cjs src/ index.ts",
-    "lint:design-refs": "node scripts/no-design-refs.cjs src/ index.ts README.md",
-    "lint:tmpdir": "node scripts/no-raw-tmpdir.cjs tests/",
-    "lint:bundled-imports": "node scripts/no-bundled-extension-imports.cjs src/ index.ts",
-    "knip": "knip --production",
-    "typecheck": "tsc --noEmit --incremental --tsBuildInfoFile node_modules/.cache/tsc.tsbuildinfo",
-    "test:unit": "node scripts/test-low-priority.cjs vitest run",
-    "test": "node scripts/test-low-priority.cjs \"node scripts/run-parallel.cjs \"npm run lint:optional-params :: npm run lint:bare-literals :: npm run lint:design-refs :: npm run lint:tmpdir :: npm run lint:bundled-imports :: npm run lint:as-never :: npm run lint :: npm run typecheck :: npm run knip :: npm run dupes\" && vitest run\"",
-    "dupes": "jscpd src/ --exit-code --threshold 0.01",
-    "lint:as-never": "node scripts/no-as-never.cjs src/ tests/ index.ts"
-  },
-  "dependencies": {
-    "avtc-pi-logger": "^1.0.3",
-    "avtc-pi-settings-ui": "^1.0.12",
-    "avtc-pi-ui-components": "^1.0.7"
-  },
-  "devDependencies": {
-    "@biomejs/biome": "^2.5.0",
-    "@earendil-works/pi-agent-core": "1.4.0",
-    "@earendil-works/pi-ai": "1.4.0",
-    "@earendil-works/pi-coding-agent": "1.4.0",
-    "@earendil-works/pi-tui": "1.4.0",
-    "@types/node": "^25.9.3",
-    "jscpd": "^5.0.10",
-    "knip": "^6.17.1",
-    "typebox": "^1.1.38",
-    "typescript": "^6.0.3",
-    "vitest": "^4.1.9"
-  },
-  "author": "avtc <tarasenkov@gmail.com>",
-  "repository": {
-    "type": "git",
-    "url": "https://github.com/avtc/avtc-pi-portrait.git"
-  },
-  "bugs": {
-    "url": "https://github.com/avtc/avtc-pi-portrait/issues"
-  },
-  "homepage": "https://github.com/avtc/avtc-pi-portrait",
-  "bundleDependencies": [
-    "avtc-pi-ui-components"
-  ]
+	"name": "avtc-pi-portrait",
+	"version": "1.1.2",
+	"description": "Builds a behavioral portrait from your session history — learns your corrections and injects them into the system prompt so the agent anticipates them before responding.",
+	"type": "module",
+	"license": "MIT",
+	"keywords": [
+		"pi-package",
+		"pi-extension"
+	],
+	"main": "./index.ts",
+	"types": "./index.ts",
+	"pi": {
+		"extensions": [
+			"./index.ts",
+			"../avtc-pi-ui-components/index.ts"
+		],
+		"allowedCodeDeps": [
+			"avtc-pi-logger",
+			"avtc-pi-settings-ui"
+		],
+		"image": "https://raw.githubusercontent.com/avtc/avtc-pi-portrait/main/assets/images/cover.png"
+	},
+	"files": [
+		"index.ts",
+		"src/",
+		"docs/",
+		"assets/images/",
+		"LICENSE",
+		"README.md"
+	],
+	"scripts": {
+		"lint": "biome check .",
+		"lint:optional-params": "node scripts/no-optional-params.cjs src/ tests/",
+		"lint:bare-literals": "node scripts/no-bare-literals.cjs src/ index.ts",
+		"lint:design-refs": "node scripts/no-design-refs.cjs src/ index.ts README.md",
+		"lint:tmpdir": "node scripts/no-raw-tmpdir.cjs tests/",
+		"lint:bundled-imports": "node scripts/no-bundled-extension-imports.cjs src/ index.ts",
+		"knip": "knip --production",
+		"typecheck": "tsc --noEmit --incremental --tsBuildInfoFile node_modules/.cache/tsc.tsbuildinfo",
+		"test:unit": "node scripts/test-low-priority.cjs vitest run",
+		"test": "node scripts/test-low-priority.cjs \"node scripts/run-parallel.cjs \"npm run lint:optional-params :: npm run lint:bare-literals :: npm run lint:design-refs :: npm run lint:tmpdir :: npm run lint:bundled-imports :: npm run lint:as-never :: npm run lint :: npm run typecheck :: npm run knip :: npm run dupes\" && vitest run\"",
+		"dupes": "jscpd src/ --exit-code --threshold 0.01",
+		"lint:as-never": "node scripts/no-as-never.cjs src/ tests/ index.ts"
+	},
+	"dependencies": {
+		"avtc-pi-logger": "^1.0.3",
+		"avtc-pi-settings-ui": "^1.0.14",
+		"avtc-pi-ui-components": "^1.0.7"
+	},
+	"devDependencies": {
+		"@biomejs/biome": "^2.5.0",
+		"@earendil-works/pi-agent-core": "1.4.0",
+		"@earendil-works/pi-ai": "1.4.0",
+		"@earendil-works/pi-coding-agent": "1.4.0",
+		"@earendil-works/pi-tui": "1.4.0",
+		"@types/node": "^25.9.3",
+		"jscpd": "^5.0.10",
+		"knip": "^6.17.1",
+		"typebox": "^1.1.38",
+		"typescript": "^6.0.3",
+		"vitest": "^4.1.9"
+	},
+	"author": "avtc <tarasenkov@gmail.com>",
+	"repository": {
+		"type": "git",
+		"url": "https://github.com/avtc/avtc-pi-portrait.git"
+	},
+	"bugs": {
+		"url": "https://github.com/avtc/avtc-pi-portrait/issues"
+	},
+	"homepage": "https://github.com/avtc/avtc-pi-portrait",
+	"bundleDependencies": [
+		"avtc-pi-ui-components"
+	]
 }
